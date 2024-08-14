@@ -5,9 +5,6 @@ from airflow.operators.python import PythonOperator
 from airflow.hooks.base import BaseHook
 from airflow.hooks.http_hook import HttpHook
 
-
-
-
 def retrieve_bulk_player_file(**context):
     import httpx
 
