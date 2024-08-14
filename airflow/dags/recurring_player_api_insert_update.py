@@ -1,57 +1,28 @@
 import datetime
+import logging
 from airflow.decorators import dag
-from airflow.operators.empty import EmptyOperator
 from airflow.providers.http.operators.http import HttpOperator  
 from airflow.operators.python import PythonOperator
-#from airflow.providers.sqlite.operators.sqlite import SqliteOperator
-from airflow.hooks.base import BaseHook
-import json
-import sqlite3
-import logging
+#from airflow.hooks.base import BaseHook
 from shared_functions import insert_update_player_data_bulk_2
 
 def health_check_response(response):
     logging.info(f"Response status code: {response.status_code}")
     logging.info(f"Response body: {response.text}")
-    return response.status_code == 200 and response.json() == {"message": "API health check successful"}
+    return (
+        response.status_code == 200 
+        and response.json() == {"message": "API health check successful"}
+    )
 
 def insert_update_player_data(**context):
-# Fetch the connection object
-    # conn_id = 'sqlite_default'
-    # connection = BaseHook.get_connection(conn_id)
-    
-    # # Extract the path to the SQLite database from the connection object
-    # sqlite_db_path = connection.host
     
     player_json = context['ti'].xcom_pull(task_ids='api_player_query')
     
     if player_json:
-        #player_json = json.loads(player_data)  # Convert from JSON string to Python dictionary/list
         insert_update_player_data_bulk_2(player_json)
 
-    #     # Use a context manager for the SQLite connection
-    #     with sqlite3.connect(sqlite_db_path) as conn:
-    #         cursor = conn.cursor()
-
-    #         # Insert each player record into the 'player' table
-    #         for player in player_data:
-    #             try:
-    #                 cursor.execute("""
-    #                 INSERT INTO player (player_id, gsis_id, first_name, last_name, position, last_changed_date) 
-    #                 VALUES (?, ?, ?, ?, ?, ?) 
-    #                 ON CONFLICT(player_id) DO UPDATE SET 
-    #                 gsis_id=excluded.gsis_id, first_name=excluded.first_name, last_name=excluded.last_name, 
-    #                 position=excluded.position, last_changed_date=excluded.last_changed_date
-    #                 """, (
-    #                     player['player_id'], player['gsis_id'], player['first_name'], 
-    #                     player['last_name'], player['position'], player['last_changed_date']
-    #                 ))
-    #             except Exception as e:
-    #                 logging.error(f"Failed to insert player {player['player_id']}: {e}")
-                    
-
-    # else:
-    #     logging.warning("No player data found.")
+    else:
+       logging.warning("No player data found.")
 
 
 @dag(start_date=datetime.datetime(2024, 8, 7), schedule_interval=None, catchup=False)  
@@ -74,19 +45,12 @@ def recurring_player_api_insert_update_dag():
         headers={"Content-Type": "application/json"},
     )
 
-    # # Task to transform and upsert data into SQLite
-    # player_upsert_task = PythonOperator(
-    #     task_id='player_upsert',
-    #     python_callable=insert_update_player_data,
-    #     provide_context=True,
-    # )
 
     player_sqlite_upsert_task = PythonOperator(
         task_id='player_sqlite_upsert',
         python_callable=insert_update_player_data,
         provide_context=True,
     )
-
 
     # Define the task dependencies
     api_health_check_task >> api_player_query_task >> player_sqlite_upsert_task
