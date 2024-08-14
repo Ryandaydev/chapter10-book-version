@@ -11,7 +11,7 @@ import pandas as pd
 
 def retrieve_bulk_player_file(**context):
     http_hook = HttpHook(http_conn_id='repository_raw_url')
-    endpoint = "/chapter10/player_data_partial.parquet"
+    endpoint = "chapter10/player_data_partial.parquet"
     local_file_path = "player_data_partial.parquet"
 
     response = http_hook.run(endpoint)
