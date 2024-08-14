@@ -1,17 +1,16 @@
 import datetime
+import logging
 from airflow.decorators import dag
 from airflow.operators.python import PythonOperator
 from airflow.hooks.base import BaseHook
 from airflow.hooks.http_hook import HttpHook
-import sqlite3
-import logging
-import httpx
-import pandas as pd
+
 
 
 
 def retrieve_bulk_player_file(**context):
-    #parquet_file_url = "https://raw.githubusercontent.com/handsonapibook/apibook-part-one/main/bulk/player_data.parquet"
+    import httpx
+
     local_file_path = "player_data_partial.parquet"
 
     http_conn_id = 'repository_raw_url'
@@ -28,19 +27,12 @@ def retrieve_bulk_player_file(**context):
         with open(local_file_path, 'wb') as file:
             file.write(response.content)
 
-
-    # http_hook = HttpHook(http_conn_id='repository_raw_url')
-    # endpoint = "chapter10/player_data_partial.parquet"
-    # local_file_path = "player_data_partial.parquet"
-
-    # response = http_hook.run(endpoint)
-    # response.raise_for_status()  
-    # with open(local_file_path, 'wb') as file:
-    #     file.write(response.content)
-
     context['ti'].xcom_push(key='local_parquet_file_path', value=local_file_path)
 
 def insert_update_player_data_bulk(**context):
+    import sqlite3
+    import pandas as pd
+
 # Fetch the connection object
     database_conn_id = 'analytics_database'
     connection = BaseHook.get_connection(database_conn_id)
@@ -72,9 +64,11 @@ def insert_update_player_data_bulk(**context):
                     ))
                 except Exception as e:
                     logging.error(f"Failed to insert player {player['player_id']}: {e}")
+                    raise
                     
     else:
         logging.warning("No player data found.")
+        raise ValueError("No player data found. Task failed due to missing data.")
 
 @dag(start_date=datetime.datetime(2024, 8, 7), schedule_interval=None, catchup=False)  
 def bulk_player_file_load_dag():
