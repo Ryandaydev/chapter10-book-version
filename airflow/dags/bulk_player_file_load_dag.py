@@ -4,7 +4,7 @@ from airflow.decorators import dag
 from airflow.operators.python import PythonOperator
 from airflow.hooks.base import BaseHook
 # from airflow.hooks.http_hook import http_hook
-from shared_functions import insert_update_player_data_bulk_2
+from shared_functions import upsert_player_data
 
 
 def retrieve_bulk_player_file(**context):
@@ -34,7 +34,7 @@ def insert_update_player_data_bulk(**context):
     local_parquet_file_path = context['ti'].xcom_pull(task_ids='bulk_file_retrieve', key='local_parquet_file_path')
     player_df = pd.read_parquet(local_parquet_file_path)
     player_json = player_df.to_json(orient='records')
-    insert_update_player_data_bulk_2(player_json)
+    upsert_player_data(player_json)
 
 # def insert_update_player_data_bulk(**context):
 #     import sqlite3

@@ -2,7 +2,7 @@ import logging
 import json
 from airflow.hooks.base import BaseHook
 
-def insert_update_player_data_bulk_2(player_json):
+def upsert_player_data(player_json):
     import sqlite3
     import pandas as pd
 
